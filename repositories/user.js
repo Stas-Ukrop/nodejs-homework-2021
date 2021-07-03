@@ -13,11 +13,6 @@ const create = async (body) => {
   return await user.save();
 };
 
-const findByToken = async (token) => {
-  const { _id, name, email, subscription } = await User.findOne({ token });
-  return { _id, name, email, subscription };
-};
-
 const updateToket = async (id, token) => {
   return await User.updateOne({ _id: id }, { token });
 };
@@ -30,11 +25,16 @@ const changeSubscription = async (id, newSub) => {
   return result;
 };
 
+const updateAvatar = async (userId, file , cloudAvatar=null) => {
+  const result = await User.updateOne({ _id: userId }, { avatar: file , cloudAvatar });
+  return result;
+};
+
 module.exports = {
   findByID,
   findByEmail,
   create,
-  findByToken,
   updateToket,
+  updateAvatar,
   changeSubscription,
 };
