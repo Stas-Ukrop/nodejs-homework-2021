@@ -1,6 +1,7 @@
 const { Schema, model } = require("mongoose");
 const bcrypt = require("bcryptjs");
 const { Sub } = require("../helpers/constants");
+const gravatar = require("gravatar");
 
 const userSchema = new Schema(
   {
@@ -32,7 +33,18 @@ const userSchema = new Schema(
       enum: [...Object.values(Sub)],
       default: Sub.STARTER,
     },
+    avatar: {
+      type: String,
+      default: function () {
+        return gravatar.url(this.email, { s: "250" }, true);
+      },
+    },
+    cloudAvatar: {
+      type: String,
+      default: null,
+    },
   },
+
   { versionKey: false, timestamps: true }
 );
 

@@ -9,7 +9,7 @@ const schemaCreateUser = Joi.object({
       minDomainSegments: 2,
       tlds: { allow: ["com", "net"] },
     })
-    .optional(),
+    .required(),
   password: Joi.string().required(),
   token: Joi.string(),
   subscription: Joi.string(),

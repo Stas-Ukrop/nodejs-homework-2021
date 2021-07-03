@@ -1,4 +1,8 @@
+const fs = require("fs/promises");
+const path = require("path");
 const User = require("../repositories/user");
+const UploadAvatar = require("../service/local-upload");
+const UploadService = require("../service/cloud-upload");
 const {
   Status,
   HttpCode,
@@ -7,7 +11,9 @@ const {
 } = require("../helpers/constants");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+
 const SECRET_KEY = process.env.SECRET_KEY;
+const AVATAR_OF_USERS = process.env.AVATAR_OF_USERS;
 
 const register = async (req, res, next) => {
   try {
@@ -19,10 +25,12 @@ const register = async (req, res, next) => {
         })
       );
     }
-    const { id, name, email, subscription } = await User.create(req.body);
+    const { id, name, email, subscription, avatar } = await User.create(
+      req.body
+    );
     res.status(HttpCode.CREATER).json(
       createResponse(Status.SUCCESS, HttpCode.CREATER, {
-        data: { id, name, email, subscription },
+        data: { id, name, email, subscription, avatar },
       })
     );
   } catch (e) {
@@ -40,13 +48,13 @@ const login = async (req, res, next) => {
         })
       );
     }
-    const { id, subscription } = user;
+    const { id, subscription, avatar } = user;
     const payload = { id, subscription };
     const token = jwt.sign(payload, SECRET_KEY, { expiresIn: "12h" });
     await User.updateToket(id, token);
     res.status(HttpCode.OK).json(
       createResponse(Status.SUCCESS, HttpCode.OK, {
-        data: { id, token, subscription },
+        data: { id, token, subscription, avatar },
       })
     );
   } catch (e) {
@@ -65,8 +73,8 @@ const logout = async (req, res, next) => {
 
 const current = async (req, res, next) => {
   try {
-    const token = await req.user.token;
-    const user = await User.findByToken(token);
+    const id = await req.user._id;
+    const user = await User.findByID(id);
     if (user) {
       res
         .status(HttpCode.OK)
@@ -103,10 +111,55 @@ const updateSubscription = async (req, res, next) => {
     next(e);
   }
 };
+
+const avatars = async (req, res, next) => {
+  try {
+    const id = req.user.id;
+    const upload = new UploadAvatar(AVATAR_OF_USERS);
+    const urlAvatar = await upload.saveAvatar({
+      idUser: id,
+      file: req.file,
+    });
+    try {
+      fs.unlink(path.join(AVATAR_OF_USERS, req.user.avatar));
+    } catch (error) {
+      console.log(error.message);
+    }
+    await User.updateAvatar(id, urlAvatar);
+    return res
+      .status(HttpCode.OK)
+      .json(
+        createResponse(Status.SUCCESS, HttpCode.OK, { data: { urlAvatar } })
+      );
+  } catch (error) {
+    next(error);
+  }
+};
+// cloud avatar
+// const avatars = async (req, res, next) => {
+//   try {
+//     const id = req.user.id;
+//     const upload = new UploadService();
+//     const { urlAvatar, cloudAvatar } = await upload.saveAvatar(
+//       req.file.path,
+//       req.user.cloudAvatar
+//     );
+//     await fs.unlink(req.file.path);
+//     await User.updateAvatar(id, urlAvatar, cloudAvatar);
+//     return res
+//       .status(HttpCode.OK)
+//       .json(
+//         createResponse(Status.SUCCESS, HttpCode.OK, { data: { urlAvatar } })
+//       );
+//   } catch (error) {
+//     next(error);
+//   }
+// };
 module.exports = {
   register,
   login,
   logout,
   current,
   updateSubscription,
+  avatars,
 };
