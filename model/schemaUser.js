@@ -2,6 +2,7 @@ const { Schema, model } = require("mongoose");
 const bcrypt = require("bcryptjs");
 const { Sub } = require("../helpers/constants");
 const gravatar = require("gravatar");
+const { v4: uuidv4 } = require("uuid");
 
 const userSchema = new Schema(
   {
@@ -42,6 +43,15 @@ const userSchema = new Schema(
     cloudAvatar: {
       type: String,
       default: null,
+    },
+    isVerify: {
+      type: Boolean,
+      default: false,
+    },
+    verifyToken: {
+      type: String,
+      required: [true, "Verify token is required"],
+      default: uuidv4(),
     },
   },
 

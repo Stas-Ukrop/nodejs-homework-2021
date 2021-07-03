@@ -2,7 +2,9 @@ const fs = require("fs/promises");
 const path = require("path");
 const User = require("../repositories/user");
 const UploadAvatar = require("../service/local-upload");
-const UploadService = require("../service/cloud-upload");
+// const UploadService = require("../service/cloud-upload");
+const EmailService = require("../service/email");
+const CreateSenderSendGrid = require("../service/email-sender");
 const {
   Status,
   HttpCode,
@@ -25,9 +27,18 @@ const register = async (req, res, next) => {
         })
       );
     }
-    const { id, name, email, subscription, avatar } = await User.create(
-      req.body
-    );
+    const { id, name, email, subscription, avatar, verifyToken } =
+      await User.create(req.body);
+
+    try {
+      const emailService = new EmailService(
+        process.env.NODE_ENV,
+        new CreateSenderSendGrid()
+      );
+      await emailService.sendEmailVerify(verifyToken, email, name);
+    } catch (error) {
+      console.log(error.message);
+    }
     res.status(HttpCode.CREATER).json(
       createResponse(Status.SUCCESS, HttpCode.CREATER, {
         data: { id, name, email, subscription, avatar },
@@ -41,7 +52,7 @@ const login = async (req, res, next) => {
   try {
     const user = await User.findByEmail(req.body.email);
     const isValidPass = await user?.isValidPassword(req.body.password);
-    if (!user || !isValidPass) {
+    if (!user || !isValidPass || !user.isVerify) {
       return res.status(HttpCode.UNAUTHORIZED).json(
         createResponse(Status.ERROR, HttpCode.UNAUTHORIZED, {
           message: Message.INVALID__DATA,
@@ -155,6 +166,65 @@ const avatars = async (req, res, next) => {
 //     next(error);
 //   }
 // };
+
+const verify = async (req, res, next) => {
+  try {
+    const user = await User.findByToken(req.params.token);
+    if (user) {
+      await User.updateToketVerify(user.id, true, null);
+      return res.json(
+        createResponse(Status.SUCCESS, HttpCode.OK, {
+          message: Message.SUCCESS,
+        })
+      );
+    }
+
+    return res.status(HttpCode.BAD_REQYEST).json(
+      createResponse(Status.ERROR, HttpCode.BAD_REQYEST, {
+        message: "Verification has already been passed",
+      })
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+const repeatEmailVerify = async (req, res, next) => {
+  try {
+    const user = await User.findByEmail(req.body.email);
+    if (user) {
+      const { name, email, isVerify, verifyToken } = user;
+      if (!isVerify) {
+        const emailService = new EmailService(
+          process.env.NODE_ENV,
+          new CreateSenderSendGrid()
+        );
+        await emailService.sendEmailVerify(verifyToken, email, name);
+        return res.json(
+          createResponse(Status.SUCCESS, HttpCode.OK, {
+            message: "Verification email sent",
+          })
+        );
+      }
+      return res.status(HttpCode.CONFLICT).json(
+        createResponse(Status.ERROR, HttpCode.CONFLICT, {
+          message: "Email has been verified",
+        })
+      );
+    }
+
+    return res
+      .status(HttpCode.NOT_FOUND)
+      .json(
+        createResponse(Status.ERROR, HttpCode.NOT_FOUND, {
+          message: "User not found",
+        })
+      );
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -162,4 +232,6 @@ module.exports = {
   current,
   updateSubscription,
   avatars,
+  verify,
+  repeatEmailVerify,
 };
