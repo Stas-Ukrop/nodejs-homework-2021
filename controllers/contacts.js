@@ -11,13 +11,12 @@ const {
   Message,
   createResponse,
 } = require("../helpers/constants");
-const { response } = require("express");
 
 const getAll = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const { docs: contacts, ...rest } = await listContacts(userId, req.query);
-    return res.status(HttpCode.SUCCESS).json(
+    return res.json(
       createResponse(Status.SUCCESS, HttpCode.SUCCESS, {
         data: { contacts, ...rest },
       })
@@ -49,7 +48,7 @@ const getById = async (req, res, next) => {
       ? res.json(
           createResponse(Status.SUCCESS, HttpCode.OK, { data: { contact } })
         )
-      : res.status(HttpCode.NOT_FOUND).json(
+      : res.json(
           createResponse(Status.ERROR, HttpCode.NOT_FOUND, {
             message: Message.NOT_FOUND,
           })
@@ -69,7 +68,7 @@ const remove = async (req, res, next) => {
             data: { contact },
           })
         )
-      : response.status(HttpCode.NOT_FOUND).json(
+      : res.json(
           createResponse(Status.ERROR, HttpCode.NOT_FOUND, {
             message: Message.NOT_FOUND,
           })
@@ -89,8 +88,8 @@ const update = async (req, res, next) => {
           createResponse(Status.SUCCESS, HttpCode.OK, { data: { contact } })
         );
     }
-    return res.status(HttpCode.NOT_FOUND).json(
-      createResponse(Status.NOT_FOUND, HttpCode.NOT_FOUND, {
+    return res.status(HttpCode.ERROR).json(
+      createResponse(Status.ERROR, HttpCode.ERROR, {
         message: Message.NOT_FOUND,
       })
     );
